@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shark Escape! - Ultimate Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #70c5ec 0%, #caefff 45%, #006994 45%, #002244 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- SCREEN SHAKE & RED FLASH ANIMATIONS --- */
+        body.shake {
+            animation: cameraShake 0.5s ease-in-out infinite;
+        }
+
+        @keyframes cameraShake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-8px, 6px) rotate(-1deg); }
+            40% { transform: translate(8px, -6px) rotate(1deg); }
+            60% { transform: translate(-6px, -4px) rotate(-1deg); }
+            80% { transform: translate(6px, 4px) rotate(1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        #flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.1s ease;
+        }
+
+        #flash-overlay.active {
+            opacity: 1;
+            animation: flashPulse 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes flashPulse {
+            from { background-color: rgba(255, 0, 0, 0.4); }
+            to { background-color: rgba(255, 0, 0, 0.8); }
+        }
+
+        /* --- WORD INPUT CONTROL BAR --- */
+        #setup-bar {
+            background: rgba(255, 255, 255, 0.95);
+            width: 100%;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+
+        #custom-word-input {
+            padding: 8px 12px;
+            font-size: 1rem;
+            border: 2px solid #008CBA;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            background-color: #008CBA;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 3px #005f73;
+        }
+
+        .btn:hover { background-color: #00779a; }
+
+        /* --- GAME SCENE AREA --- */
+        #game-scene {
+            position: relative;
+            width: 100%;
+            max-width: 850px;
+            height: 52vh;
+            overflow: hidden;
+        }
+
+        /* FLOATING CLOUDS */
+        .cloud {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50px;
+            opacity: 0.85;
+            animation: moveCloud linear infinite;
+        }
+
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+        }
+
+        .cloud1 { width: 120px; height: 40px; top: 10%; animation-duration: 25s; }
+        .cloud1::before { width: 50px; height: 50px; top: -20px; left: 15px; }
+        .cloud1::after { width: 40px; height: 40px; top: -15px; right: 15px; }
+
+        .cloud2 { width: 160px; height: 50px; top: 22%; animation-duration: 35s; animation-delay: -12s; }
+        .cloud2::before { width: 60px; height: 60px; top: -25px; left: 25px; }
+        .cloud2::after { width: 50px; height: 50px; top: -20px; right: 25px; }
+
+        @keyframes moveCloud {
+            0% { left: -200px; }
+            100% { left: 100%; }
+        }
+
+        /* CORNER MOOD EMOJI BADGE */
+        #mood-badge {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 6px 14px;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            color: #003366;
+        }
+
+        #face-expression {
+            font-size: 28px;
+        }
+
+        /* OCEAN WATER & WAVES */
+        .water-surface {
+            position: absolute;
+            top: 45%;
+            width: 100%;
+            height: 55%;
+            background: linear-gradient(180deg, #0077be 0%, #004477 100%);
+            z-index: 2;
+        }
+
+        .wave-layer {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            width: 200%;
+            height: 30px;
+            background-repeat: repeat-x;
+        }
+
+        .wave1 {
+            background-image: radial-gradient(circle at 20px 0, transparent 20px, rgba(255, 255, 255, 0.6) 21px, rgba(255, 255, 255, 0.6) 25px, transparent 26px);
+            background-size: 60px 40px;
+            animation: waveFlow 4s linear infinite;
+            opacity: 0.8;
+        }
+
+        .wave2 {
+            top: -15px;
+            background-image: radial-gradient(circle at 30px 0, transparent 25px, rgba(255, 255, 255, 0.4) 26px, rgba(255, 255, 255, 0.4) 30px, transparent 31px);
+            background-size: 80px 40px;
+            animation: waveFlow 6s linear infinite reverse;
+            opacity: 0.6;
+        }
+
+        @keyframes waveFlow {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* MAN & PARACHUTE CONTAINER */
+        #man-container {
+            position: absolute;
+            left: 50%;
+            top: 5%; 
+            transform: translateX(-50%);
+            transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+            text-align: center;
+            z-index: 4;
+        }
+
+        #man-img {
+            height: 150px;
+            width: auto;
+            filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.4));
+        }
+
+        /* FLY UP ANIMATION FOR WINNING */
+        #man-container.fly-away {
+            top: -250px !important;
+            opacity: 0;
+            transition: top 1.5s ease-in-out, opacity 1.5s ease-in-out;
+        }
+
+        /* SHARK FIN (SWIMMING ACROSS) */
+        #shark-fin {
+            position: absolute;
+            top: 47%;
+            left: -150px;
+            height: 80px;
+            z-index: 3;
+            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.3));
+            animation: swim 8s infinite linear;
+        }
+
+        #shark-fin.hidden {
+            display: none !important;
+        }
+
+        @keyframes swim {
+            0% { left: -150px; transform: scaleX(1); }
+            50% { left: 100%; transform: scaleX(1); }
+            51% { transform: scaleX(-1); }
+            99% { left: -150px; transform: scaleX(-1); }
+            100% { transform: scaleX(1); }
+        }
+
+        /* SHARK JUMPING OUT (GAME OVER) */
+        #shark-jump {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            height: 290px;
+            z-index: 6;
+            filter: drop-shadow(0px 10px 20px rgba(0,0,0,0.6));
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #shark-jump.active {
+            transform: translateX(-50%) scale(1);
+        }
+
+        /* WATER SPLASH PARTICLES */
+        .splash-particle {
+            position: absolute;
+            bottom: 50%;
+            width: 12px;
+            height: 12px;
+            background-color: #e0f6ff;
+            border-radius: 50%;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        @keyframes splashUp {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+        }
+
+        /* --- UI CONTAINER --- */
+        #ui-container {
+            background: rgba(255, 255, 255, 0.95);
+            width: 100%;
+            max-width: 850px;
+            padding: 15px;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        #word-display {
+            font-size: 2.2rem;
+            letter-spacing: 10px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #003366;
+            min-height: 45px;
+        }
+
+        #lives-display {
+            font-size: 1.1rem;
+            color: #d9534f;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        #keyboard {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        .key {
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 3px #005f73;
+        }
+
+        .key.correct {
+            background-color: #4CAF50 !important;
+            box-shadow: 0 3px #2e7d32 !important;
+        }
+
+        .key.wrong {
+            background-color: #f44336 !important;
+            box-shadow: 0 3px #c62828 !important;
+            opacity: 0.5;
+        }
+
+        /* --- END GAME ACTION BUTTONS & BANNER --- */
+        #end-game-banner {
+            display: none;
+            margin-top: 10px;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #end-game-message {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            padding: 10px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .retry-btn {
+            background-color: #ff9800;
+            box-shadow: 0 4px #e65100;
+        }
+
+        .win-btn {
+            background-color: #4CAF50;
+            box-shadow: 0 4px #2e7d32;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- RED FLASH LIGHT OVERLAY FOR SHARK ATTACK -->
+    <div id="flash-overlay"></div>
+
+    <!-- EDITABLE WORD INPUT BAR -->
+    <div id="setup-bar">
+        <label for="custom-word-input"><strong>Secret Word:</strong></label>
+        <input type="password" id="custom-word-input" placeholder="Enter word here..." value="PARACHUTE">
+        <button class="btn" onclick="setCustomWord()">Start Game</button>
+        <button class="btn" style="background-color: #777;" onclick="toggleWordVisibility()">👁️ Show/Hide</button>
+    </div>
+
+    <!-- MAIN GAME SCENE -->
+    <div id="game-scene">
+        <!-- Floating Clouds -->
+        <div class="cloud cloud1"></div>
+        <div class="cloud cloud2"></div>
+
+        <!-- Corner Mood Emoji Indicator -->
+        <div id="mood-badge">
+            <span>Status:</span>
+            <div id="face-expression">😃</div>
+        </div>
+
+        <!-- Parachute Man -->
+        <div id="man-container">
+            <img id="man-img" src="parachute.png" alt="Man with Parachute">
+        </div>
+
+        <!-- Water Surface & Multi-layer Waves -->
+        <div class="water-surface">
+            <div class="wave-layer wave1"></div>
+            <div class="wave-layer wave2"></div>
+        </div>
+
+        <!-- Swimming Shark Fin -->
+        <img id="shark-fin" src="sharkfin.png" alt="Shark Fin Moving">
+
+        <!-- Shark Jumping Out -->
+        <img id="shark-jump" src="jump.png" alt="Shark Jumping Out">
+
+        <!-- Water Splash Container -->
+        <div id="splash-container"></div>
+    </div>
+
+    <!-- UI CONTROLS -->
+    <div id="ui-container">
+        <div id="lives-display">Lives Remaining: <span id="lives-count">7</span> / 7</div>
+        <div id="word-display">_ _ _ _ _</div>
+        
+        <!-- KEYBOARD -->
+        <div id="keyboard"></div>
+
+        <!-- END GAME BUTTON BANNER -->
+        <div id="end-game-banner">
+            <div id="end-game-message"></div>
+            <button id="action-btn" class="action-btn" onclick="initGame()"></button>
+        </div>
+    </div>
+
+    <!-- AUDIO ELEMENTS -->
+    <audio id="sound-correct" src="correct.mp3"></audio>
+    <audio id="sound-wrong" src="wrong.mp3"></audio>
+    <audio id="sound-win" src="win.mp3"></audio>
+    <audio id="sound-splash" src="splash.mp3"></audio>
+    <audio id="sound-eat" src="splash-eat.mp3"></audio>
+
+    <script>
+        const MAX_LIVES = 7;
+        const FACES = ["😃", "😟", "😰", "😨", "😱", "😭", "💀", "👻"];
+        const HEIGHT_LEVELS = [5, 12, 19, 26, 31, 37, 42, 48];
+
+        let selectedWord = "PARACHUTE";
+        let guessedLetters = [];
+        let wrongGuesses = 0;
+
+        function playSound(id) {
+            const sound = document.getElementById(id);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+            }
+        }
+
+        function setCustomWord() {
+            const input = document.getElementById("custom-word-input");
+            const word = input.value.trim().toUpperCase();
+            
+            if (!word || !/^[A-Z]+$/.test(word)) {
+                alert("Please enter a valid word containing letters only!");
+                return;
+            }
+
+            selectedWord = word;
+            initGame();
+        }
+
+        function toggleWordVisibility() {
+            const input = document.getElementById("custom-word-input");
+            input.type = input.type === "password" ? "text" : "password";
+        }
+
+        function initGame() {
+            guessedLetters = [];
+            wrongGuesses = 0;
+
+            const manContainer = document.getElementById("man-container");
+
+            // Reset Parachute Man Fly-Away Animation & Display
+            manContainer.classList.remove("fly-away");
+            manContainer.style.display = "block";
+            manContainer.style.opacity = "1";
+
+            // Reset Game Effects & UI
+            document.body.classList.remove("shake");
+            document.getElementById("flash-overlay").classList.remove("active");
+            document.getElementById("shark-fin").classList.remove("hidden");
+            document.getElementById("shark-jump").classList.remove("active");
+            document.getElementById("lives-count").innerText = MAX_LIVES;
+            
+            // Hide End Game Banner
+            document.getElementById("end-game-banner").style.display = "none";
+            document.getElementById("keyboard").style.display = "flex";
+
+            updateManPosition();
+            renderWord();
+            renderKeyboard();
+        }
+
+        function updateManPosition() {
+            document.getElementById("man-container").style.top = HEIGHT_LEVELS[wrongGuesses] + "%";
+            document.getElementById("face-expression").innerText = FACES[wrongGuesses];
+        }
+
+        function renderWord() {
+            const wordDisplay = document.getElementById("word-display");
+            let displayString = "";
+            let hasWon = true;
+
+            for (let letter of selectedWord) {
+                if (guessedLetters.includes(letter)) {
+                    displayString += letter + " ";
+                } else {
+                    displayString += "_ ";
+                    hasWon = false;
+                }
+            }
+
+            wordDisplay.innerText = displayString.trim();
+
+            if (hasWon && selectedWord.length > 0) {
+                gameWin();
+            }
+        }
+
+        function renderKeyboard() {
+            const keyboardContainer = document.getElementById("keyboard");
+            keyboardContainer.innerHTML = "";
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+            for (let char of alphabet) {
+                const btn = document.createElement("button");
+                btn.classList.add("key");
+                btn.innerText = char;
+                btn.id = `key-${char}`;
+                btn.onclick = () => handleGuess(char);
+                keyboardContainer.appendChild(btn);
+            }
+        }
+
+        function handleGuess(letter) {
+            if (guessedLetters.includes(letter) || wrongGuesses >= MAX_LIVES) return;
+
+            guessedLetters.push(letter);
+            const btn = document.getElementById(`key-${letter}`);
+
+            if (selectedWord.includes(letter)) {
+                btn.classList.add("correct");
+                btn.disabled = true;
+                playSound("sound-correct");
+                renderWord();
+            } else {
+                btn.classList.add("wrong");
+                btn.disabled = true;
+                wrongGuesses++;
+                
+                document.getElementById("lives-count").innerText = MAX_LIVES - wrongGuesses;
+                playSound("sound-wrong");
+                updateManPosition();
+
+                if (wrongGuesses >= MAX_LIVES) {
+                    gameOver();
+                }
+            }
+        }
+
+        function gameWin() {
+            playSound("sound-win");
+            disableAllKeys();
+
+            // 1. Trigger Man Flying Up and Disappearing
+            const manContainer = document.getElementById("man-container");
+            document.getElementById("face-expression").innerText = "😎";
+            manContainer.classList.add("fly-away");
+
+            // 2. Show Winner Banner & Play Again Button
+            const banner = document.getElementById("end-game-banner");
+            const msg = document.getElementById("end-game-message");
+            const btn = document.getElementById("action-btn");
+
+            msg.innerText = "🎉 Great Job! You Saved Him! 🎉";
+            msg.style.color = "#2e7d32";
+            
+            btn.innerText = "Play Again! 🏆";
+            btn.className = "action-btn win-btn";
+            
+            document.getElementById("keyboard").style.display = "none";
+            banner.style.display = "flex";
+        }
+
+        function gameOver() {
+            // Reveal secret word
+            document.getElementById("word-display").innerText = selectedWord.split("").join(" ");
+
+            // 1. Hide swimming fin immediately when game ends
+            document.getElementById("shark-fin").classList.add("hidden");
+
+            // 2. Play attack sounds
+            playSound("sound-splash");
+            playSound("sound-eat");
+
+            // 3. Trigger Screen Shake & Red Danger Lights
+            document.body.classList.add("shake");
+            document.getElementById("flash-overlay").classList.add("active");
+
+            // 4. Trigger Water Splash FX
+            createWaterSplash();
+
+            // 5. Hide parachute man & make shark jump out
+            setTimeout(() => {
+                document.getElementById("man-container").style.display = "none";
+                document.getElementById("shark-jump").classList.add("active");
+            }, 300);
+
+            // Stop screen shake after 1.5 seconds
+            setTimeout(() => {
+                document.body.classList.remove("shake");
+            }, 1500);
+
+            disableAllKeys();
+
+            // Show Retry Banner & Try Again Button
+            setTimeout(() => {
+                const banner = document.getElementById("end-game-banner");
+                const msg = document.getElementById("end-game-message");
+                const btn = document.getElementById("action-btn");
+
+                msg.innerText = "🦈 Oh no! You got eaten!";
+                msg.style.color = "#c62828";
+                
+                btn.innerText = "Try Again 🔄";
+                btn.className = "action-btn retry-btn";
+
+                document.getElementById("keyboard").style.display = "none";
+                banner.style.display = "flex";
+            }, 800);
+        }
+
+        function createWaterSplash() {
+            const splashContainer = document.getElementById("splash-container");
+            splashContainer.innerHTML = "";
+
+            for (let i = 0; i < 35; i++) {
+                const particle = document.createElement("div");
+                particle.classList.add("splash-particle");
+                particle.style.left = "50%";
+                
+                const dx = (Math.random() - 0.5) * 320 + "px";
+                const dy = -(Math.random() * 200 + 60) + "px";
+                
+                particle.style.setProperty('--dx', dx);
+                particle.style.setProperty('--dy', dy);
+                particle.style.animation = "splashUp 0.8s ease-out forwards";
+
+                splashContainer.appendChild(particle);
+            }
+        }
+
+        function disableAllKeys() {
+            document.querySelectorAll(".key").forEach(k => k.disabled = true);
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
